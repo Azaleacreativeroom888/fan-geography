@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勉強日誌 | 地図と旅の勉強帖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --map-base: #deb887;
+    --map-base-deep: #c9a273;
+    --ink: #4a3220;
+    --ink-soft: #6b4a30;
+    --teal: #3f5d54;
+    --teal-deep: #2c443c;
+    --clay: #a8502f;
+    --paper: #f3e4c4;
+    --paper-line: rgba(74,50,32,0.16);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background: var(--map-base);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  .coord{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+
+  /* --- header / cartouche (共通) --- */
+  header{
+    padding: 1.4rem clamp(1.2rem, 5vw, 3.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    border-bottom: 1.5px solid var(--paper-line);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px);
+  }
+
+  .cartouche{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 1.1rem 0.5rem 0.6rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 2px;
+    position: relative;
+  }
+  .cartouche::before, .cartouche::after{
+    content:"";
+    position: absolute;
+    width: 7px; height: 7px;
+    border: 1.5px solid var(--ink);
+  }
+  .cartouche::before{ top: -4px; left: -4px; border-right: none; border-bottom: none; }
+  .cartouche::after{ bottom: -4px; right: -4px; border-left: none; border-top: none; }
+
+  .cartouche .mark{ width: 30px; height: 30px; flex-shrink: 0; }
+
+  .site-title{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.28rem;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+  }
+  .site-title small{
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 0.62rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  nav.legend{ display: flex; gap: 1.6rem; flex-wrap: wrap; font-size: 0.92rem; }
+  nav.legend a{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid transparent;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  nav.legend a:hover, nav.legend a.active{ border-color: var(--clay); color: var(--clay); }
+  nav.legend .swatch{ width: 10px; height: 10px; border: 1.5px solid var(--ink); flex-shrink: 0; }
+  nav.legend a[data-key="blog"] .swatch{ background: var(--teal); border-color: var(--teal-deep); }
+  nav.legend a[data-key="column"] .swatch{ background: var(--paper); }
+  nav.legend a[data-key="about"] .swatch{ background: var(--clay); border-color: #7a3820; }
+  nav.legend a[data-key="index"] .swatch{ background: var(--ink); }
+
+  /* --- page intro --- */
+  .page-head{
+    padding: clamp(2.6rem, 6vw, 3.6rem) clamp(1.2rem, 5vw, 3.5rem) clamp(1.6rem, 4vw, 2.2rem);
+    border-bottom: 1.5px solid var(--paper-line);
+  }
+  .page-head .coord{ display: block; margin-bottom: 0.9rem; }
+  .page-head h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(1.9rem, 4.4vw, 2.6rem);
+    margin: 0 0 0.7rem;
+  }
+  .page-head p{
+    max-width: 50ch;
+    color: var(--ink-soft);
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  /* --- feed: Twitter形式の日付+一言だけ --- */
+  .feed{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 3rem) clamp(1.2rem, 5vw, 1.5rem) clamp(4rem, 9vw, 6rem);
+    position: relative;
+  }
+  .feed::before{
+    content:"";
+    position: absolute;
+    top: 0; bottom: 60px; left: 30px;
+    width: 0;
+    border-left: 2px dashed var(--ink);
+    opacity: 0.3;
+  }
+
+  .entry{
+    position: relative;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 1.2rem;
+    padding: 1.15rem 0;
+  }
+  .entry .stamp{
+    position: relative;
+    z-index: 1;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.1;
+    flex-shrink: 0;
+  }
+  .entry .stamp .day{ font-size: 1.1rem; font-weight: 500; }
+  .entry .stamp .mon{ font-size: 0.58rem; color: var(--ink-soft); letter-spacing: 0.04em; }
+
+  .entry:nth-child(3n+1) .stamp{ background: var(--teal); color: var(--paper); border-color: var(--teal-deep); }
+  .entry:nth-child(3n+1) .stamp .mon{ color: rgba(243,228,196,0.75); }
+  .entry:nth-child(3n+2) .stamp{ background: var(--paper); }
+  .entry:nth-child(3n) .stamp{ background: var(--clay); color: var(--paper); border-color: #7a3820; }
+  .entry:nth-child(3n) .stamp .mon{ color: rgba(243,228,196,0.75); }
+
+  .entry .body{
+    background: var(--paper);
+    padding: 0.95rem 1.15rem 1.05rem;
+    border-radius: 2px;
+    box-shadow: 0 8px 18px -16px rgba(74,50,32,0.6);
+  }
+  .entry .body .meta{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 0.45rem;
+  }
+  .entry .body .date-full{ font-size: 0.78rem; color: var(--ink-soft); }
+  .entry .body .tag{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--teal-deep);
+    border: 1px solid var(--teal-deep);
+    padding: 0.1rem 0.45rem;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .entry .body p{
+    margin: 0;
+    font-size: 0.98rem;
+    color: var(--ink);
+  }
+
+  .feed-end{
+    text-align: center;
+    padding-top: 1.5rem;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+  }
+
+  @media (max-width: 520px){
+    .entry{ grid-template-columns: 44px 1fr; gap: 0.8rem; }
+    .entry .stamp{ width: 44px; height: 44px; }
+    .entry .stamp .day{ font-size: 0.88rem; }
+    .entry .stamp .mon{ font-size: 0.5rem; }
+    .feed::before{ left: 22px; }
+  }
+
+  /* --- footer (共通) --- */
+  footer{
+    background: var(--ink);
+    color: var(--paper);
+    padding: clamp(2.6rem, 6vw, 3.6rem) clamp(1.2rem, 5vw, 3.5rem) 2rem;
+  }
+  .footer-grid{
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(243,228,196,0.22);
+  }
+  @media (max-width: 700px){ .footer-grid{ grid-template-columns: 1fr; } }
+  footer h4{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 1rem;
+    margin: 0 0 0.9rem;
+    color: var(--map-base);
+  }
+  footer p{ font-size: 0.86rem; color: rgba(243,228,196,0.75); margin: 0 0 1rem; max-width: 42ch; }
+
+  .contact-form{ display: flex; flex-direction: column; gap: 0.6rem; max-width: 360px; }
+  .contact-form input, .contact-form textarea{
+    background: rgba(243,228,196,0.08);
+    border: 1px solid rgba(243,228,196,0.3);
+    color: var(--paper);
+    padding: 0.55rem 0.7rem;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.88rem;
+    border-radius: 1px;
+  }
+  .contact-form textarea{ resize: vertical; min-height: 70px; }
+  .contact-form button{
+    align-self: flex-start;
+    margin-top: 0.2rem;
+    background: var(--map-base);
+    color: var(--ink);
+    border: none;
+    padding: 0.55rem 1.2rem;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .contact-form button:hover{ background: var(--teal); color: var(--paper); }
+
+  .hub-links{ list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.88rem; }
+  .hub-links a{ color: rgba(243,228,196,0.85); border-bottom: 1px solid transparent; }
+  .hub-links a:hover{ border-color: var(--map-base); color: var(--map-base); }
+
+  .footer-bottom{
+    padding-top: 1.3rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.76rem;
+    color: rgba(243,228,196,0.55);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="cartouche">
+    <svg class="mark" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="#4a3220" stroke-width="1.6"/>
+      <path d="M20 5 L20 35 M5 20 L35 20" stroke="#4a3220" stroke-width="1"/>
+      <path d="M20 5 L23 17 L20 20 L17 17 Z" fill="#a8502f"/>
+    </svg>
+    <span class="site-title">地図と旅の勉強帖<small>GEOGRAPHY STUDY LOG</small></span>
+  </div>
+  <nav class="legend">
+    <a href="index.html" data-key="index"><span class="swatch"></span>index</a>
+    <a href="blog.html" data-key="blog" class="active"><span class="swatch"></span>blog</a>
+    <a href="column.html" data-key="column"><span class="swatch"></span>column</a>
+    <a href="about.html" data-key="about"><span class="swatch"></span>about</a>
+  </nav>
+</header>
+
+<section class="page-head">
+  <span class="coord">LOG — 日付と一言だけの進捗メモ</span>
+  <h1>勉強日誌</h1>
+  <p>地図に足跡を残すように、その日やったことだけを短く記録していく場所です。</p>
+</section>
+
+<section class="feed">
+
+  <article class="entry">
+    <div class="stamp"><span class="day">10</span><span class="mon">SEP</span></div>
+    <div class="body">
+      <div class="meta"><span class="date-full">2026年9月10日</span><span class="tag">自然地理</span></div>
+      <p>ケッペンの気候区分をやっと自力で図から判定できるようになった。うれしい。</p>
+    </div>
+  </article>
+
+  <article class="entry">
+    <div class="stamp"><span class="day">8</span><span class="mon">SEP</span></div>
+    <div class="body">
+      <div class="meta"><span class="date-full">2026年9月8日</span><span class="tag">地図と道具</span></div>
+      <p>地形図の等高線の読み方を練習。谷と尾根の見分け方がやっとつかめてきた。</p>
+    </div>
+  </article>
+
+  <article class="entry">
+    <div class="stamp"><span class="day">6</span><span class="mon">SEP</span></div>
+    <div class="body">
+      <div class="meta"><span class="date-full">2026年9月6日</span><span class="tag">人文地理</span></div>
+      <p>人口ピラミッドの形と国の発展段階の関係を復習。図を見比べるだけで結構楽しい。</p>
+    </div>
+  </article>
+
+  <article class="entry">
+    <div class="stamp"><span class="day">3</span><span class="mon">SEP</span></div>
+    <div class="body">
+      <div class="meta"><span class="date-full">2026年9月3日</span><span class="tag">地誌</span></div>
+      <p>東南アジアの農業地域を白地図に書き込みながら覚えた。手を動かすと定着が早い気がする。</p>
+    </div>
+  </article>
+
+  <article class="entry">
+    <div class="stamp"><span class="day">30</span><span class="mon">AUG</span></div>
+    <div class="body">
+      <div class="meta"><span class="date-full">2026年8月30日</span><span class="tag">自然地理</span></div>
+      <p>プレートテクトニクスの単元、造山帯の場所を地図で確認しながら一周。</p>
+    </div>
+  </article>
+
+  <div class="feed-end">— ここまで —</div>
+</section>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+      <h4>ご連絡はこちらから</h4>
+      <p>感想や誤りのご指摘など、お気軽にどうぞ。</p>
+      <form class="contact-form" action="https://formspree.io/f/maqvpvoz" method="POST">
+        <input type="text" name="name" placeholder="お名前" required>
+        <input type="email" name="email" placeholder="メールアドレス" required>
+        <textarea name="message" placeholder="メッセージ" required></textarea>
+        <button type="submit">送信する</button>
+      </form>
+    </div>
+    <div>
+      <h4>Azalea Creative Room</h4>
+      <ul class="hub-links">
+        <li><a href="#">Azalea Creative Room ハブ</a></li>
+        <li><a href="#">その他の勉強サイト一覧</a></li>
+        <li><a href="#">Bluesky</a></li>
+        <li><a href="#">Pixiv</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>本サイトのコンテンツはAIの学習データとしての利用を禁止します。</span>
+    <span>© 地図と旅の勉強帖 / Azalea Creative Room</span>
+  </div>
+</footer>
+
+</body>
+</html>
