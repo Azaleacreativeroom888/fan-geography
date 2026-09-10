@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地図と旅の勉強帖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --map-base: #deb887;
+    --map-base-deep: #c9a273;
+    --map-base-deeper: #b48d5e;
+    --ink: #4a3220;
+    --ink-soft: #6b4a30;
+    --teal: #3f5d54;
+    --teal-deep: #2c443c;
+    --clay: #a8502f;
+    --paper: #f3e4c4;
+    --paper-line: rgba(74,50,32,0.16);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background: var(--map-base);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  .coord{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+
+  /* --- contour line background texture --- */
+  .contours{
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  /* --- header / cartouche --- */
+  header{
+    position: relative;
+    padding: 1.4rem clamp(1.2rem, 5vw, 3.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    border-bottom: 1.5px solid var(--paper-line);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px);
+  }
+
+  .cartouche{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 1.1rem 0.5rem 0.6rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 2px;
+    position: relative;
+  }
+  .cartouche::before, .cartouche::after{
+    content:"";
+    position: absolute;
+    width: 7px; height: 7px;
+    border: 1.5px solid var(--ink);
+  }
+  .cartouche::before{ top: -4px; left: -4px; border-right: none; border-bottom: none; }
+  .cartouche::after{ bottom: -4px; right: -4px; border-left: none; border-top: none; }
+
+  .cartouche .mark{
+    width: 30px; height: 30px;
+    flex-shrink: 0;
+  }
+
+  .site-title{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.28rem;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+  }
+  .site-title small{
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 0.62rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  nav.legend{
+    display: flex;
+    gap: 1.6rem;
+    flex-wrap: wrap;
+    font-size: 0.92rem;
+  }
+  nav.legend a{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid transparent;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  nav.legend a:hover{ border-color: var(--clay); color: var(--clay); }
+  nav.legend .swatch{
+    width: 10px; height: 10px;
+    border: 1.5px solid var(--ink);
+    flex-shrink: 0;
+  }
+  nav.legend a[data-key="blog"] .swatch{ background: var(--teal); border-color: var(--teal-deep); }
+  nav.legend a[data-key="column"] .swatch{ background: var(--paper); }
+  nav.legend a[data-key="about"] .swatch{ background: var(--clay); border-color: #7a3820; }
+  nav.legend a[data-key="index"] .swatch{ background: var(--ink); }
+
+  /* --- hero --- */
+  .hero{
+    position: relative;
+    overflow: hidden;
+    padding: clamp(3.4rem, 9vw, 6.5rem) clamp(1.2rem, 5vw, 3.5rem) clamp(4rem, 10vw, 7rem);
+    border-bottom: 1.5px solid var(--paper-line);
+  }
+  .hero-inner{
+    position: relative;
+    z-index: 2;
+    max-width: 640px;
+  }
+  .hero .coord{ margin-bottom: 1rem; display:block; }
+  .hero h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(2.3rem, 5.6vw, 3.6rem);
+    line-height: 1.22;
+    margin: 0 0 1.3rem;
+  }
+  .hero h1 em{
+    font-style: italic;
+    font-weight: 500;
+    color: var(--teal-deep);
+  }
+  .hero p{
+    max-width: 46ch;
+    font-size: 1.04rem;
+    color: var(--ink-soft);
+    margin: 0 0 2rem;
+  }
+  .hero-actions{
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .btn{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.72rem 1.35rem;
+    border-radius: 1px;
+    font-size: 0.94rem;
+    font-weight: 500;
+  }
+  .btn.primary{
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn.primary:hover{ background: var(--teal-deep); }
+  .btn.ghost{
+    border: 1.5px solid var(--ink);
+  }
+  .btn.ghost:hover{ background: rgba(74,50,32,0.06); }
+
+  .compass{
+    position: absolute;
+    right: clamp(-1rem, 4vw, 3rem);
+    bottom: clamp(-2rem, -2vw, 0.5rem);
+    width: clamp(160px, 24vw, 260px);
+    height: auto;
+    z-index: 1;
+    opacity: 0.92;
+  }
+
+  /* --- route section --- */
+  .route-section{
+    padding: clamp(3rem, 7vw, 4.5rem) clamp(1.2rem, 5vw, 3.5rem);
+    background: var(--map-base-deep);
+    border-bottom: 1.5px solid var(--paper-line);
+  }
+  .route-section > .eyebrow{
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    margin: 0 0 2.4rem;
+  }
+
+  .route{
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .route::before{
+    content:"";
+    position: absolute;
+    top: 17px;
+    left: 6%;
+    right: 6%;
+    height: 0;
+    border-top: 2.5px dashed var(--ink);
+    opacity: 0.5;
+    z-index: 0;
+  }
+  .stop{
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 0 0.6rem;
+  }
+  .stop .pin{
+    width: 36px; height: 36px;
+    margin: 0 auto 1.1rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+  .stop:nth-child(1) .pin{ background: var(--teal); color: var(--paper); border-color: var(--teal-deep); }
+  .stop:nth-child(4) .pin{ background: var(--clay); color: var(--paper); border-color: #7a3820; }
+  .stop h3{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.08rem;
+    margin: 0 0 0.5rem;
+  }
+  .stop p{
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  @media (max-width: 760px){
+    .route{ grid-template-columns: 1fr; gap: 2.2rem; }
+    .route::before{ display: none; }
+  }
+
+  /* --- teaser cards --- */
+  .teasers{
+    padding: clamp(3.2rem, 7vw, 5rem) clamp(1.2rem, 5vw, 3.5rem);
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+  }
+  @media (max-width: 780px){
+    .teasers{ grid-template-columns: 1fr; }
+  }
+
+  .note{
+    background: var(--paper);
+    padding: 1.8rem 1.7rem 2rem;
+    position: relative;
+    box-shadow: 0 10px 24px -18px rgba(74,50,32,0.55);
+    transform: rotate(-0.6deg);
+  }
+  .note::before{
+    content:"";
+    position: absolute;
+    top: -9px; left: 28px;
+    width: 18px; height: 18px;
+    background: var(--clay);
+    border-radius: 50%;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.25);
+  }
+  .note .coord{ margin-bottom: 0.7rem; }
+  .note h3{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 0 0 0.8rem;
+  }
+  .note p{ margin: 0 0 1.1rem; color: var(--ink-soft); font-size: 0.95rem; }
+  .note .go{
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--teal-deep);
+    border-bottom: 1.5px solid var(--teal-deep);
+    padding-bottom: 1px;
+  }
+
+  .frame{
+    background: var(--paper);
+    padding: 0.7rem;
+    box-shadow: 0 10px 24px -18px rgba(74,50,32,0.55);
+    transform: rotate(0.5deg);
+  }
+  .frame-inner{
+    border: 1.5px solid var(--ink);
+    padding: 1.6rem 1.7rem 1.9rem;
+    height: 100%;
+  }
+  .frame .coord{ margin-bottom: 0.7rem; }
+  .frame h3{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 0 0 0.8rem;
+  }
+  .frame p{ margin: 0 0 1.1rem; color: var(--ink-soft); font-size: 0.95rem; }
+  .frame .go{
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--clay);
+    border-bottom: 1.5px solid var(--clay);
+    padding-bottom: 1px;
+  }
+
+  /* --- footer --- */
+  footer{
+    background: var(--ink);
+    color: var(--paper);
+    padding: clamp(2.6rem, 6vw, 3.6rem) clamp(1.2rem, 5vw, 3.5rem) 2rem;
+  }
+  .footer-grid{
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(243,228,196,0.22);
+  }
+  @media (max-width: 700px){
+    .footer-grid{ grid-template-columns: 1fr; }
+  }
+  footer h4{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 1rem;
+    margin: 0 0 0.9rem;
+    color: var(--map-base);
+  }
+  footer p{ font-size: 0.86rem; color: rgba(243,228,196,0.75); margin: 0 0 1rem; max-width: 42ch; }
+
+  .contact-form{ display: flex; flex-direction: column; gap: 0.6rem; max-width: 360px; }
+  .contact-form input, .contact-form textarea{
+    background: rgba(243,228,196,0.08);
+    border: 1px solid rgba(243,228,196,0.3);
+    color: var(--paper);
+    padding: 0.55rem 0.7rem;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.88rem;
+    border-radius: 1px;
+  }
+  .contact-form textarea{ resize: vertical; min-height: 70px; }
+  .contact-form button{
+    align-self: flex-start;
+    margin-top: 0.2rem;
+    background: var(--map-base);
+    color: var(--ink);
+    border: none;
+    padding: 0.55rem 1.2rem;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .contact-form button:hover{ background: var(--teal); color: var(--paper); }
+
+  .hub-links{ list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.88rem; }
+  .hub-links a{ color: rgba(243,228,196,0.85); border-bottom: 1px solid transparent; }
+  .hub-links a:hover{ border-color: var(--map-base); color: var(--map-base); }
+
+  .footer-bottom{
+    padding-top: 1.3rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.76rem;
+    color: rgba(243,228,196,0.55);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="cartouche">
+    <svg class="mark" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="#4a3220" stroke-width="1.6"/>
+      <path d="M20 5 L20 35 M5 20 L35 20" stroke="#4a3220" stroke-width="1"/>
+      <path d="M20 5 L23 17 L20 20 L17 17 Z" fill="#a8502f"/>
+    </svg>
+    <span class="site-title">地図と旅の勉強帖<small>GEOGRAPHY STUDY LOG</small></span>
+  </div>
+  <nav class="legend">
+    <a href="index.html" data-key="index"><span class="swatch"></span>index</a>
+    <a href="blog.html" data-key="blog"><span class="swatch"></span>blog</a>
+    <a href="column.html" data-key="column"><span class="swatch"></span>column</a>
+    <a href="about.html" data-key="about"><span class="swatch"></span>about</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <svg class="contours" viewBox="0 0 1200 500" preserveAspectRatio="none">
+    <g fill="none" stroke="#4a3220" stroke-width="1">
+      <path d="M-50 80 C 200 40, 400 120, 650 70 S 1100 40, 1300 90" opacity="0.35"/>
+      <path d="M-50 140 C 220 90, 420 190, 660 130 S 1080 100, 1300 150" opacity="0.3"/>
+      <path d="M-50 210 C 250 150, 430 260, 680 190 S 1060 170, 1300 220" opacity="0.28"/>
+      <path d="M-50 290 C 200 240, 460 340, 700 270 S 1040 250, 1300 300" opacity="0.22"/>
+      <path d="M-50 370 C 230 320, 480 420, 720 350 S 1020 340, 1300 390" opacity="0.18"/>
+      <path d="M-50 440 C 260 400, 500 480, 740 420 S 1000 410, 1300 460" opacity="0.14"/>
+    </g>
+  </svg>
+
+  <svg class="compass" viewBox="0 0 200 200" fill="none">
+    <circle cx="100" cy="100" r="90" stroke="#4a3220" stroke-width="1.2" opacity="0.5"/>
+    <circle cx="100" cy="100" r="65" stroke="#4a3220" stroke-width="1" opacity="0.4"/>
+    <g stroke="#4a3220" stroke-width="1" opacity="0.5">
+      <line x1="100" y1="10" x2="100" y2="190"/>
+      <line x1="10" y1="100" x2="190" y2="100"/>
+    </g>
+    <path d="M100 20 L112 100 L100 180 L88 100 Z" fill="#a8502f" opacity="0.9"/>
+    <path d="M20 100 L100 88 L180 100 L100 112 Z" fill="#3f5d54" opacity="0.85"/>
+    <circle cx="100" cy="100" r="6" fill="#4a3220"/>
+    <text x="100" y="16" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4a3220">N</text>
+    <text x="100" y="196" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4a3220">S</text>
+    <text x="8" y="104" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4a3220">W</text>
+    <text x="192" y="104" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4a3220">E</text>
+  </svg>
+
+  <div class="hero-inner">
+    <span class="coord">現在地 — 独学 / 地理 / 進行中</span>
+    <h1>地形を読み、<br>人と土地の<em>物語</em>をたどる。</h1>
+    <p>地理の勉強の記録と、そこから生まれた漫画やイラストを置いていく個人サイトです。地形図を眺めるように、少しずつ知識の等高線を重ねていきます。</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="blog.html">勉強日誌を読む</a>
+      <a class="btn ghost" href="column.html">コラム・作品を見る</a>
+    </div>
+  </div>
+</section>
+
+<section class="route-section">
+  <p class="eyebrow">— 勉強のルート —</p>
+  <div class="route">
+    <div class="stop">
+      <div class="pin">1</div>
+      <h3>自然地理</h3>
+      <p>地形・気候・生態系。土地そのものの成り立ちを見る。</p>
+    </div>
+    <div class="stop">
+      <div class="pin">2</div>
+      <h3>人文地理</h3>
+      <p>人口・都市・文化と土地の関わり方を追う。</p>
+    </div>
+    <div class="stop">
+      <div class="pin">3</div>
+      <h3>地誌</h3>
+      <p>国や地域ごとの個性を、地図と資料で掘り下げる。</p>
+    </div>
+    <div class="stop">
+      <div class="pin">4</div>
+      <h3>地図と道具</h3>
+      <p>地形図の読み方、統計の見方など実践的な技術。</p>
+    </div>
+  </div>
+</section>
+
+<section class="teasers">
+  <div class="note">
+    <span class="coord">BLOG — 日々の記録</span>
+    <h3>今日はどこを歩いた?</h3>
+    <p>日付と一言だけの、勉強の進捗メモ。地図に足跡を残すように、淡々と積み重ねます。</p>
+    <a class="go" href="blog.html">日誌をひらく →</a>
+  </div>
+  <div class="frame">
+    <div class="frame-inner">
+      <span class="coord">COLUMN — 作品と小論</span>
+      <h3>漫画・イラスト・四コマ</h3>
+      <p>地理をテーマにした漫画や四コマ、勉強しながら考えたことをまとめた軽い小論文形式の記事を置いています。</p>
+      <a class="go" href="column.html">コラムを見る →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+      <h4>ご連絡はこちらから</h4>
+      <p>感想や誤りのご指摘など、お気軽にどうぞ。</p>
+      <form class="contact-form" action="https://formspree.io/f/maqvpvoz" method="POST">
+        <input type="text" name="name" placeholder="お名前" required>
+        <input type="email" name="email" placeholder="メールアドレス" required>
+        <textarea name="message" placeholder="メッセージ" required></textarea>
+        <button type="submit">送信する</button>
+      </form>
+    </div>
+    <div>
+      <h4>Azalea Creative Room</h4>
+      <ul class="hub-links">
+        <li><a href="#">Azalea Creative Room ハブ</a></li>
+        <li><a href="#">その他の勉強サイト一覧</a></li>
+        <li><a href="#">Bluesky</a></li>
+        <li><a href="#">Pixiv</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>本サイトのコンテンツはAIの学習データとしての利用を禁止します。</span>
+    <span>© 地図と旅の勉強帖 / Azalea Creative Room</span>
+  </div>
+</footer>
+
+</body>
+</html>
