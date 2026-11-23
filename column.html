@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コラム | 地図と旅の勉強帖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --map-base: #deb887;
+    --map-base-deep: #c9a273;
+    --ink: #4a3220;
+    --ink-soft: #6b4a30;
+    --teal: #3f5d54;
+    --teal-deep: #2c443c;
+    --clay: #a8502f;
+    --paper: #f3e4c4;
+    --paper-line: rgba(74,50,32,0.16);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background: var(--map-base);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  .coord{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+
+  /* --- header / cartouche (共通) --- */
+  header{
+    padding: 1.4rem clamp(1.2rem, 5vw, 3.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    border-bottom: 1.5px solid var(--paper-line);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px);
+  }
+
+  .cartouche{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 1.1rem 0.5rem 0.6rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 2px;
+    position: relative;
+  }
+  .cartouche::before, .cartouche::after{
+    content:"";
+    position: absolute;
+    width: 7px; height: 7px;
+    border: 1.5px solid var(--ink);
+  }
+  .cartouche::before{ top: -4px; left: -4px; border-right: none; border-bottom: none; }
+  .cartouche::after{ bottom: -4px; right: -4px; border-left: none; border-top: none; }
+  .cartouche .mark{ width: 30px; height: 30px; flex-shrink: 0; }
+
+  .site-title{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.28rem;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+  }
+  .site-title small{
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    font-size: 0.62rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  nav.legend{ display: flex; gap: 1.6rem; flex-wrap: wrap; font-size: 0.92rem; }
+  nav.legend a{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid transparent;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  nav.legend a:hover, nav.legend a.active{ border-color: var(--clay); color: var(--clay); }
+  nav.legend .swatch{ width: 10px; height: 10px; border: 1.5px solid var(--ink); flex-shrink: 0; }
+  nav.legend a[data-key="blog"] .swatch{ background: var(--teal); border-color: var(--teal-deep); }
+  nav.legend a[data-key="column"] .swatch{ background: var(--paper); }
+  nav.legend a[data-key="about"] .swatch{ background: var(--clay); border-color: #7a3820; }
+  nav.legend a[data-key="index"] .swatch{ background: var(--ink); }
+
+  /* --- page intro --- */
+  .page-head{
+    padding: clamp(2.6rem, 6vw, 3.6rem) clamp(1.2rem, 5vw, 3.5rem) clamp(1.6rem, 4vw, 2.2rem);
+    border-bottom: 1.5px solid var(--paper-line);
+  }
+  .page-head .coord{ display: block; margin-bottom: 0.9rem; }
+  .page-head h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(1.9rem, 4.4vw, 2.6rem);
+    margin: 0 0 0.7rem;
+  }
+  .page-head p{ max-width: 52ch; color: var(--ink-soft); margin: 0; font-size: 0.98rem; }
+
+  .jump{
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-top: 1.4rem;
+  }
+  .jump a{
+    font-size: 0.86rem;
+    padding: 0.4rem 1rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 1px;
+  }
+  .jump a:hover{ background: var(--ink); color: var(--paper); }
+
+  /* --- section heading --- */
+  .section{
+    padding: clamp(2.8rem, 6vw, 4rem) clamp(1.2rem, 5vw, 3.5rem);
+  }
+  .section.deep{
+    background: var(--map-base-deep);
+    border-top: 1.5px solid var(--paper-line);
+    border-bottom: 1.5px solid var(--paper-line);
+  }
+  .sec-title{
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin: 0 0 1.8rem;
+    flex-wrap: wrap;
+  }
+  .sec-title h2{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  .sec-title .coord{ margin: 0; }
+
+  /* --- works: 額装風 --- */
+  .works{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: clamp(1.4rem, 3vw, 2rem);
+    align-items: start;
+  }
+  .frame{
+    background: var(--paper);
+    padding: 0.7rem 0.7rem 0.9rem;
+    box-shadow: 0 10px 22px -18px rgba(74,50,32,0.65);
+  }
+  .frame:nth-child(odd){ transform: rotate(-0.5deg); }
+  .frame:nth-child(even){ transform: rotate(0.5deg); }
+  .frame .art{
+    border: 1.5px solid var(--ink);
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 9px, rgba(74,50,32,0.06) 9px, rgba(74,50,32,0.06) 10px);
+    aspect-ratio: 4 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.8rem;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+  }
+  .frame .art.tall{ aspect-ratio: 3 / 4; }
+  .frame .cap{
+    margin-top: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  .frame .cap strong{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+  .frame .kind{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--paper);
+    padding: 0.1rem 0.5rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    background: var(--teal);
+  }
+  .frame .kind.k2{ background: var(--clay); }
+  .frame .kind.k3{ background: var(--ink); }
+  .frame .date{ font-size: 0.76rem; color: var(--ink-soft); margin-top: 0.15rem; }
+
+  /* 四コマ */
+  .yonkoma{
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .yonkoma .panel{
+    border: 1.5px solid var(--ink);
+    background: rgba(243,228,196,0.5);
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+  }
+
+  /* --- essays --- */
+  .essays{
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+  }
+  .essay{
+    background: var(--paper);
+    padding: 1.7rem 1.8rem 1.8rem;
+    position: relative;
+    box-shadow: 0 10px 22px -18px rgba(74,50,32,0.6);
+    border-left: 5px solid var(--teal);
+  }
+  .essay:nth-child(2){ border-left-color: var(--clay); }
+  .essay:nth-child(3){ border-left-color: var(--ink); }
+  .essay .meta{
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+  .essay .tag{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--teal-deep);
+    border: 1px solid var(--teal-deep);
+    padding: 0.1rem 0.5rem;
+    border-radius: 20px;
+  }
+  .essay h3{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    line-height: 1.4;
+    margin: 0 0 0.8rem;
+  }
+  .essay p{ margin: 0 0 0.9rem; font-size: 0.97rem; color: var(--ink); }
+  .essay p.lead{ color: var(--ink-soft); }
+
+  details summary{
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--teal-deep);
+    display: inline-block;
+    border-bottom: 1.5px solid var(--teal-deep);
+    padding-bottom: 1px;
+  }
+  details summary::-webkit-details-marker{ display: none; }
+  details[open] summary{ margin-bottom: 1rem; }
+  details .more h4{
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 0.98rem;
+    color: var(--clay);
+    margin: 1.2rem 0 0.3rem;
+  }
+
+  /* --- footer (共通) --- */
+  footer{
+    background: var(--ink);
+    color: var(--paper);
+    padding: clamp(2.6rem, 6vw, 3.6rem) clamp(1.2rem, 5vw, 3.5rem) 2rem;
+  }
+  .footer-grid{
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(243,228,196,0.22);
+  }
+  @media (max-width: 700px){ .footer-grid{ grid-template-columns: 1fr; } }
+  footer h4{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 1rem;
+    margin: 0 0 0.9rem;
+    color: var(--map-base);
+  }
+  footer p{ font-size: 0.86rem; color: rgba(243,228,196,0.75); margin: 0 0 1rem; max-width: 42ch; }
+
+  .contact-form{ display: flex; flex-direction: column; gap: 0.6rem; max-width: 360px; }
+  .contact-form input, .contact-form textarea{
+    background: rgba(243,228,196,0.08);
+    border: 1px solid rgba(243,228,196,0.3);
+    color: var(--paper);
+    padding: 0.55rem 0.7rem;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.88rem;
+    border-radius: 1px;
+  }
+  .contact-form textarea{ resize: vertical; min-height: 70px; }
+  .contact-form button{
+    align-self: flex-start;
+    margin-top: 0.2rem;
+    background: var(--map-base);
+    color: var(--ink);
+    border: none;
+    padding: 0.55rem 1.2rem;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .contact-form button:hover{ background: var(--teal); color: var(--paper); }
+
+  .hub-links{ list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.88rem; }
+  .hub-links a{ color: rgba(243,228,196,0.85); border-bottom: 1px solid transparent; }
+  .hub-links a:hover{ border-color: var(--map-base); color: var(--map-base); }
+
+  .footer-bottom{
+    padding-top: 1.3rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.76rem;
+    color: rgba(243,228,196,0.55);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="cartouche">
+    <svg class="mark" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="#4a3220" stroke-width="1.6"/>
+      <path d="M20 5 L20 35 M5 20 L35 20" stroke="#4a3220" stroke-width="1"/>
+      <path d="M20 5 L23 17 L20 20 L17 17 Z" fill="#a8502f"/>
+    </svg>
+    <span class="site-title">地図と旅の勉強帖<small>GEOGRAPHY STUDY LOG</small></span>
+  </div>
+  <nav class="legend">
+    <a href="index.html" data-key="index"><span class="swatch"></span>index</a>
+    <a href="blog.html" data-key="blog"><span class="swatch"></span>blog</a>
+    <a href="column.html" data-key="column" class="active"><span class="swatch"></span>column</a>
+    <a href="about.html" data-key="about"><span class="swatch"></span>about</a>
+  </nav>
+</header>
+
+<section class="page-head">
+  <span class="coord">COLUMN — 作品と小論</span>
+  <h1>コラム</h1>
+  <p>地理にまつわる漫画・イラスト・四コマと、勉強しながら考えたことを書いた軽い小論文を置いています。</p>
+  <div class="jump">
+    <a href="#works">作品を見る</a>
+    <a href="#essays">小論を読む</a>
+  </div>
+</section>
+
+<section class="section" id="works">
+  <div class="sec-title">
+    <h2>漫画・イラスト・四コマ</h2>
+    <span class="coord">WORKS</span>
+  </div>
+
+  <div class="works">
+    <div class="frame">
+      <div class="yonkoma">
+        <div class="panel">1コマ目</div>
+        <div class="panel">2コマ目</div>
+        <div class="panel">3コマ目</div>
+        <div class="panel">4コマ目</div>
+      </div>
+      <div class="cap"><strong>等高線がわからない</strong><span class="kind">四コマ</span></div>
+      <div class="date">2026年9月9日</div>
+    </div>
+
+    <div class="frame">
+      <div class="art">ここにイラスト<br>(世界の気候区分マップ)</div>
+      <div class="cap"><strong>気候区分の旅</strong><span class="kind k2">イラスト</span></div>
+      <div class="date">2026年9月4日</div>
+    </div>
+
+    <div class="frame">
+      <div class="art tall">ここに漫画<br>(1ページ)</div>
+      <div class="cap"><strong>プレートのけんか</strong><span class="kind k3">漫画</span></div>
+      <div class="date">2026年8月31日</div>
+    </div>
+
+    <div class="frame">
+      <div class="art">ここにイラスト<br>(世界の主要河川)</div>
+      <div class="cap"><strong>大河めぐり</strong><span class="kind k2">イラスト</span></div>
+      <div class="date">2026年8月25日</div>
+    </div>
+  </div>
+</section>
+
+<section class="section deep" id="essays">
+  <div class="sec-title">
+    <h2>小論文</h2>
+    <span class="coord">ESSAYS — 軽めの読みもの</span>
+  </div>
+
+  <div class="essays">
+    <article class="essay">
+      <div class="meta"><span class="tag">自然地理</span><span class="coord">2026年9月11日</span></div>
+      <h3>なぜ日本の川は「滝」のように急なのか</h3>
+      <p class="lead">世界の大河と比べると、日本の川は短く急です。その理由を、地形から考えてみました。</p>
+      <details>
+        <summary>続きを読む</summary>
+        <div class="more">
+          <h4>はじめに</h4>
+          <p>日本の川は距離が短く、標高差が大きいため、昔から「滝のようだ」と言われてきました。ここでは、その背景にある地形の特徴を整理します。</p>
+          <h4>本論</h4>
+          <p>日本列島は山地が国土の大部分を占め、海までの距離が短い国です。そのため川は短い距離で一気に標高を下げ、流れが急になります。また降水量が梅雨や台風の時期に集中するので、流量の変動も大きくなります。</p>
+          <h4>おわりに</h4>
+          <p>川の姿は、その国の地形と気候を映す鏡のようなものだと感じました。次は世界の大河と並べて比較してみたいです。</p>
+        </div>
+      </details>
+    </article>
+
+    <article class="essay">
+      <div class="meta"><span class="tag">人文地理</span><span class="coord">2026年9月5日</span></div>
+      <h3>地図記号はなぜ「見ただけでわかる」のか</h3>
+      <p class="lead">学校の地図帳でおなじみの地図記号。ひと目で意味が伝わる工夫を考えます。</p>
+      <details>
+        <summary>続きを読む</summary>
+        <div class="more">
+          <h4>はじめに</h4>
+          <p>地図記号は、小さな図形で多くの情報を伝える仕組みです。意味を知らなくても何となく想像できるものが多いのが面白いところです。</p>
+          <h4>本論</h4>
+          <p>多くの記号は、実物の形や特徴を簡略化してつくられています。誰が見ても同じ意味になるよう、形を単純にして統一することが大切にされています。</p>
+          <h4>おわりに</h4>
+          <p>身近な記号の由来を調べると、地図が「みんなで共有する言語」であることがよくわかります。</p>
+        </div>
+      </details>
+    </article>
+
+    <article class="essay">
+      <div class="meta"><span class="tag">地図と道具</span><span class="coord">2026年8月28日</span></div>
+      <h3>統計グラフを読むときに気をつけたいこと</h3>
+      <p class="lead">グラフの見た目に引っ張られず、数字を正しく読むためのメモです。</p>
+      <details>
+        <summary>続きを読む</summary>
+        <div class="more">
+          <h4>はじめに</h4>
+          <p>地理の学習では、統計や資料のグラフを読む機会がたくさんあります。同じデータでも、見せ方で印象が大きく変わります。</p>
+          <h4>本論</h4>
+          <p>縦軸の目盛りの取り方や、年代の区切り方で、増減の印象は変わります。単位や出典を確認し、数字そのものを見る習慣が大切です。</p>
+          <h4>おわりに</h4>
+          <p>グラフは便利な道具ですが、読む側の注意が必要だと改めて感じました。</p>
+        </div>
+      </details>
+    </article>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+      <h4>ご連絡はこちらから</h4>
+      <p>感想や誤りのご指摘など、お気軽にどうぞ。</p>
+      <form class="contact-form" action="https://formspree.io/f/maqvpvoz" method="POST">
+        <input type="text" name="name" placeholder="お名前" required>
+        <input type="email" name="email" placeholder="メールアドレス" required>
+        <textarea name="message" placeholder="メッセージ" required></textarea>
+        <button type="submit">送信する</button>
+      </form>
+    </div>
+    <div>
+      <h4>Azalea Creative Room</h4>
+      <ul class="hub-links">
+        <li><a href="#">Azalea Creative Room ハブ</a></li>
+        <li><a href="#">その他の勉強サイト一覧</a></li>
+        <li><a href="#">Bluesky</a></li>
+        <li><a href="#">Pixiv</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>本サイトのコンテンツはAIの学習データとしての利用を禁止します。</span>
+    <span>© 地図と旅の勉強帖 / Azalea Creative Room</span>
+  </div>
+</footer>
+
+</body>
+</html>
